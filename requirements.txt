@@ -1,6 +1,7 @@
-streamlit==1.31.1
-tensorflow==2.9.3
+streamlit
+tensorflow==2.12.0
 pillow
 numpy
 huggingface_hub
+pandas
 scikit-learn
