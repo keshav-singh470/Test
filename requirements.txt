@@ -3,3 +3,5 @@ tensorflow==2.12.0
 pillow
 numpy
 huggingface_hub
+pandas
+scikit-learn
