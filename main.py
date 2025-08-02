@@ -1,38 +1,37 @@
-from flask import Flask, render_template, request, send_from_directory
+import streamlit as st
 from tensorflow.keras.models import load_model
 from keras.preprocessing.image import load_img, img_to_array
 from huggingface_hub import hf_hub_download
 import numpy as np
 import os
+from PIL import Image
 
-# Initialize Flask app
-app = Flask(__name__)
+# Title and intro
+st.set_page_config(page_title="MRI Tumor Detection System", layout="centered")
+st.title("🧠 MRI Tumor Detection System")
+st.markdown("Upload an MRI image to detect if there is a tumor and its type.")
 
-# Download and load the model from Hugging Face
-model_path = hf_hub_download(
-    repo_id="keshavsingh2003/brain-tumour-model",
-    filename="model.h5",
-    repo_type="model"
-)
+# Load model from Hugging Face
+@st.cache_resource
+def load_model_from_huggingface():
+    model_path = hf_hub_download(
+        repo_id="keshavsingh2003/brain-tumour-model",
+        filename="model.h5",
+        repo_type="model"
+    )
+    return load_model(model_path)
 
-model = load_model(model_path)
+model = load_model_from_huggingface()
 
 # Class labels
 class_labels = ['pituitary', 'glioma', 'notumor', 'meningioma']
 
-# Define the uploads folder
-UPLOAD_FOLDER = './uploads'
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
-
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-# Helper function to predict tumor type
-def predict_tumor(image_path):
+# Prediction Function
+def predict_tumor(image):
     IMAGE_SIZE = 128
-    img = load_img(image_path, target_size=(IMAGE_SIZE, IMAGE_SIZE))
-    img_array = img_to_array(img) / 255.0  # Normalize pixel values
-    img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
+    img = image.resize((IMAGE_SIZE, IMAGE_SIZE))
+    img_array = img_to_array(img) / 255.0
+    img_array = np.expand_dims(img_array, axis=0)
 
     predictions = model.predict(img_array)
     predicted_class_index = np.argmax(predictions, axis=1)[0]
@@ -43,28 +42,15 @@ def predict_tumor(image_path):
     else:
         return f"Tumor: {class_labels[predicted_class_index]}", confidence_score
 
-# Route for the main page
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    if request.method == 'POST':
-        file = request.files['file']
-        if file:
-            file_location = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-            file.save(file_location)
+# Upload File
+uploaded_file = st.file_uploader("Choose an MRI Image", type=["jpg", "jpeg", "png"])
 
-            result, confidence = predict_tumor(file_location)
+if uploaded_file is not None:
+    image = Image.open(uploaded_file).convert('RGB')
+    st.image(image, caption="Uploaded Image", use_column_width=True)
 
-            return render_template('index.html',
-                                   result=result,
-                                   confidence=f"{confidence * 100:.2f}%",
-                                   file_path=f'/uploads/{file.filename}')
-
-    return render_template('index.html', result=None)
-
-# Route to serve uploaded files
-@app.route('/uploads/<filename>')
-def get_uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-
-if __name__ == '__main__':
-    app.run(debug=True)
+    if st.button("🔍 Detect Tumor"):
+        with st.spinner("Analyzing Image..."):
+            result, confidence = predict_tumor(image)
+            st.success(f"**Result:** {result}")
+            st.info(f"**Confidence:** {confidence * 100:.2f}%")
