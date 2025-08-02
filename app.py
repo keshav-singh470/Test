@@ -6,6 +6,8 @@ import numpy as np
 import os
 from PIL import Image
 
+
+
 # Title and intro
 st.set_page_config(page_title="MRI Tumor Detection System", layout="centered")
 st.title("🧠 MRI Tumor Detection System")

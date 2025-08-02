@@ -1,16 +1,18 @@
-FROM python:3.9-slim
-
-# Disable Streamlit telemetry
-ENV STREAMLIT_BROWSER_GATHERUSAGESTATS=false
-ENV STREAMLIT_HOME=/app
+FROM python:3.10-slim
 
 WORKDIR /app
+COPY . /app
 
-COPY requirements.txt .
 RUN pip install -r requirements.txt
 
-COPY . .
+# Ensure streamlit config folder exists and is writeable
+RUN mkdir -p /app/.streamlit
 
-EXPOSE 7860
+# Optional: copy your config file
+COPY .streamlit /app/.streamlit
 
-CMD ["streamlit", "run", "app.py", "--server.port=7860", "--server.address=0.0.0.0"]
+EXPOSE 8501
+
+ENV HOME="/app"
+
+CMD ["streamlit", "run", "main.py", "--server.port=8501", "--server.address=0.0.0.0"]
